@@ -1,0 +1,28 @@
+<section class="grid gap-6 lg:grid-cols-2">
+  <div>
+    <p class="kicker">Oficina</p>
+    <h2 class="title">Equipo</h2>
+    <p class="lede mt-1">El cobrador ya debe haber ingresado una vez con su correo.</p>
+    @if (infoMessage()) {
+      <p class="note note-ok mt-4">{{ infoMessage() }}</p>
+    }
+    @if (errorMessage()) {
+      <p class="note note-error mt-4">{{ errorMessage() }}</p>
+    }
+    <ul class="mt-4 space-y-2">
+      @for (member of team(); track member.uid) {
+        <li class="card">
+          <p class="font-medium">{{ member.displayName }}</p>
+          <p class="muted">{{ member.email }} · {{ member.role }}</p>
+        </li>
+      }
+    </ul>
+  </div>
+  <form class="panel h-fit" [formGroup]="form" (ngSubmit)="invite()">
+    <h3 class="font-semibold">Vincular cobrador</h3>
+    <label class="field mt-4"><span>Nombre</span><input formControlName="displayName" /></label>
+    <label class="field mt-3"><span>Correo</span><input type="email" formControlName="email" /></label>
+    <label class="field mt-3"><span>Teléfono</span><input formControlName="phone" /></label>
+    <button class="btn btn-primary mt-4 w-full" [disabled]="saving()">{{ saving() ? 'Vinculando…' : 'Vincular' }}</button>
+  </form>
+</section>

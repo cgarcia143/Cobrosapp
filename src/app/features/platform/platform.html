@@ -1,0 +1,165 @@
+<section class="space-y-6">
+  <div>
+    <p class="kicker">SaaS</p>
+    <h2 class="title">Plataforma</h2>
+    <p class="lede">Usuarios de la plataforma y sedes que pagan la suscripción.</p>
+  </div>
+
+  <div class="flex gap-2">
+    <button type="button" class="nav-link border-0" [class.active]="section() === 'usuarios'" (click)="show('usuarios')">Usuarios</button>
+    <button type="button" class="nav-link border-0" [class.active]="section() === 'sedes'" (click)="show('sedes')">Sedes</button>
+  </div>
+
+  @if (infoMessage()) {
+    <p class="note note-ok">{{ infoMessage() }}</p>
+  }
+  @if (errorMessage()) {
+    <p class="note note-error">{{ errorMessage() }}</p>
+  }
+
+  @if (section() === 'usuarios') {
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div class="space-y-3">
+        <div>
+          <p class="kicker">Directorio</p>
+          <h3 class="text-xl font-semibold">Usuarios</h3>
+        </div>
+        @for (user of users(); track user.uid) {
+          <article class="card">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 class="font-semibold">{{ user.displayName || 'Sin nombre' }}</h3>
+                <p class="muted">{{ user.email || 'Sin correo' }}</p>
+                <p class="muted">{{ roleLabel(user.role) }} · {{ tenantName(user.tenantId) }}</p>
+                <p class="mt-2">
+                  <span class="chip" [class]="user.active ? 'chip chip-ok' : 'chip chip-warn'">{{ user.active ? 'Activo' : 'Inactivo' }}</span>
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="btn btn-ghost" (click)="editUser(user)">Editar</button>
+                <button type="button" class="btn" [class]="user.active ? 'btn btn-warn' : 'btn btn-primary'" (click)="toggleUser(user)">
+                  {{ user.active ? 'Desactivar' : 'Activar' }}
+                </button>
+              </div>
+            </div>
+          </article>
+        } @empty {
+          <p class="empty">Todavía no hay usuarios en el directorio.</p>
+        }
+      </div>
+
+      <form class="panel h-fit space-y-3" [formGroup]="userForm" (ngSubmit)="saveUser()">
+        <h3 class="text-lg font-semibold">{{ editingUserId() ? 'Editar usuario' : 'Nuevo usuario' }}</h3>
+        <label class="field"><span>Nombre</span><input formControlName="displayName" /></label>
+        <label class="field"><span>Correo</span><input type="email" formControlName="email" [readOnly]="!!editingUserId()" /></label>
+        <label class="field"><span>Teléfono</span><input formControlName="phone" /></label>
+        @if (!editingUserId()) {
+          <label class="field"><span>Contraseña inicial</span><input type="password" formControlName="password" autocomplete="new-password" /></label>
+        }
+        <label class="field">
+          <span>Rol</span>
+          <select formControlName="role" (change)="syncRole()">
+            <option value="none">Sin rol</option>
+            <option value="super_admin">Super administrador</option>
+            <option value="oficina_admin">Administrador de oficina</option>
+            <option value="independiente">Independiente</option>
+            <option value="cobrador">Cobrador</option>
+          </select>
+        </label>
+        @if (roleNeedsTenant()) {
+          <label class="field">
+            <span>Sede</span>
+            <select formControlName="tenantId">
+              <option value="">Selecciona</option>
+              @for (tenant of tenants(); track tenant.id) {
+                <option [value]="tenant.id">{{ tenant.name }}</option>
+              }
+            </select>
+          </label>
+        }
+        <label class="field">
+          <span>Estado</span>
+          <select formControlName="active">
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+        </label>
+        <div class="flex gap-2">
+          <button class="btn btn-primary flex-1" type="submit" [disabled]="savingUser()">
+            {{ savingUser() ? 'Guardando…' : 'Guardar usuario' }}
+          </button>
+          <button class="btn btn-ghost" type="button" (click)="resetUserForm()">Limpiar</button>
+        </div>
+      </form>
+    </div>
+  } @else {
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div class="space-y-3">
+        <div>
+          <p class="kicker">Suscripción</p>
+          <h3 class="text-xl font-semibold">Sedes</h3>
+          <p class="lede">Las personas se asignan en Usuarios, eligiendo la sede. Suspender bloquea la escritura de inmediato.</p>
+        </div>
+        @for (tenant of tenants(); track tenant.id) {
+          <article class="card">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 class="font-semibold">{{ tenant.name }}</h3>
+                <p class="muted">{{ typeLabel(tenant.type) }} · {{ tenant.city || 'Sin ciudad' }} · {{ statusLabel(tenant.status) }}</p>
+                <p class="muted">Responsable: {{ ownerName(tenant) }}</p>
+                <p class="muted">{{ formatCop(tenant.subscription.amountCop) }} / {{ tenant.subscription.cycle }} · vence {{ formatDate(tenant.subscription.nextDue) }}</p>
+                <p class="muted">Capital {{ formatCop(tenant.capitalCop) }}</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="btn btn-ghost" (click)="editTenant(tenant)">Editar</button>
+                <button type="button" class="btn btn-ghost" (click)="registerPayment(tenant)">Registrar pago</button>
+                @if (tenant.status === 'suspendido') {
+                  <button type="button" class="btn btn-primary" (click)="setAccess(tenant, 'activo')">Habilitar</button>
+                } @else {
+                  <button type="button" class="btn btn-warn" (click)="setAccess(tenant, 'suspendido')">Suspender</button>
+                }
+              </div>
+            </div>
+          </article>
+        } @empty {
+          <p class="empty">No hay sedes todavía.</p>
+        }
+      </div>
+
+      <form class="panel h-fit space-y-3" [formGroup]="form" (ngSubmit)="create()">
+        <h3 class="text-lg font-semibold">{{ editingTenantId() ? 'Editar sede' : 'Nueva sede' }}</h3>
+        <label class="field"><span>Nombre</span><input formControlName="name" /></label>
+        @if (!editingTenantId()) {
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="field">
+              <span>Tipo</span>
+              <select formControlName="type">
+                <option value="oficina">Oficina</option>
+                <option value="independiente">Independiente</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Ciclo</span>
+              <select formControlName="cycle">
+                <option value="mensual">Mensual</option>
+                <option value="anual">Anual</option>
+              </select>
+            </label>
+          </div>
+        }
+        <label class="field"><span>Ciudad</span><input formControlName="city" /></label>
+        <label class="field"><span>Teléfono</span><input formControlName="phone" /></label>
+        <label class="field"><span>Capital</span><input type="number" min="0" formControlName="capitalCop" /></label>
+        @if (!editingTenantId()) {
+          <label class="field"><span>Valor suscripción</span><input type="number" min="0" formControlName="amountCop" /></label>
+        }
+        <div class="flex gap-2">
+          <button class="btn btn-primary flex-1" [disabled]="savingTenant()">
+            {{ savingTenant() ? 'Guardando…' : (editingTenantId() ? 'Guardar sede' : 'Crear sede') }}
+          </button>
+          <button class="btn btn-ghost" type="button" (click)="resetTenantForm()">Limpiar</button>
+        </div>
+      </form>
+    </div>
+  }
+</section>

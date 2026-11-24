@@ -1,0 +1,39 @@
+<section class="space-y-4">
+  <div class="flex items-end justify-between gap-3">
+    <div>
+      <p class="kicker">Sede</p>
+      <h2 class="title">Reportes del mes</h2>
+      <p class="lede">{{ report()?.monthKey || 'Mes en curso' }} · pesos colombianos</p>
+    </div>
+    <button type="button" class="btn btn-ghost" (click)="load()">Actualizar</button>
+  </div>
+
+  @if (report()?.fromCache) {
+    <p class="note note-info">Cifras tomadas de la copia local.</p>
+  }
+  @if (infoMessage()) {
+    <p class="note note-ok">{{ infoMessage() }}</p>
+  }
+  @if (errorMessage()) {
+    <p class="note note-error">{{ errorMessage() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="muted">Calculando…</p>
+  } @else if (report(); as report) {
+    <div class="grid gap-3 sm:grid-cols-2">
+      <article class="stat"><span>Capital prestado en el mes</span><strong>{{ formatCop(report.capitalPrestadoCop) }}</strong></article>
+      <article class="stat"><span>Ganancia del mes</span><strong>{{ formatCop(report.gananciasCop) }}</strong></article>
+      <article class="stat"><span>Cartera vencida</span><strong>{{ formatCop(report.carteraVencidaCop) }}</strong></article>
+      <article class="stat"><span>Capital en la calle</span><strong>{{ formatCop(report.capitalEnCalleCop) }}</strong></article>
+    </div>
+    <p class="muted">Recaudo del mes: {{ formatCop(report.pagosDelMesCop) }}</p>
+  }
+
+  <form class="panel max-w-md" [formGroup]="capitalForm" (ngSubmit)="saveCapital()">
+    <h3 class="font-semibold">Capital de trabajo</h3>
+    <p class="lede mt-1">Disponible registrado: {{ formatCop(tenantContext.tenant()?.capitalCop ?? 0) }}</p>
+    <label class="field mt-3"><span>Nuevo capital (COP)</span><input type="number" min="0" step="1" formControlName="capitalCop" /></label>
+    <button class="btn btn-primary mt-3" type="submit">Guardar capital</button>
+  </form>
+</section>

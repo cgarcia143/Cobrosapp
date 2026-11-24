@@ -1,0 +1,56 @@
+<section class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+  <div>
+    <p class="kicker">Cartera</p>
+    <h2 class="title">Clientes</h2>
+    <p class="lede mt-1">Cada cliente queda asignado a un cobrador y a un orden de ruta.</p>
+    @if (infoMessage()) {
+      <p class="note note-ok mt-4">{{ infoMessage() }}</p>
+    }
+    @if (errorMessage()) {
+      <p class="note note-error mt-4">{{ errorMessage() }}</p>
+    }
+    <div class="mt-4 space-y-3">
+      @for (client of items(); track client.id) {
+        <article class="card">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="font-semibold">{{ client.fullName }}</h3>
+              <p class="muted">{{ client.documentNumber }} · orden {{ client.routeOrder }}</p>
+              <p class="muted">{{ client.address }} {{ client.neighborhood }}</p>
+            </div>
+            <div class="flex gap-3 text-sm">
+              <button type="button" class="link" (click)="edit(client)">Editar</button>
+              <button type="button" class="link-muted" (click)="deactivate(client)">Desactivar</button>
+            </div>
+          </div>
+        </article>
+      } @empty {
+        <p class="empty">Todavía no hay clientes activos.</p>
+      }
+    </div>
+  </div>
+
+  <form class="panel h-fit" [formGroup]="form" (ngSubmit)="save()">
+    <h3 class="text-lg font-semibold">{{ editingId() ? 'Editar cliente' : 'Nuevo cliente' }}</h3>
+    <label class="field mt-4"><span>Nombre</span><input formControlName="fullName" /></label>
+    <label class="field mt-3"><span>Documento</span><input formControlName="documentNumber" /></label>
+    <label class="field mt-3"><span>Teléfono</span><input formControlName="phone" /></label>
+    <label class="field mt-3"><span>Dirección</span><input formControlName="address" /></label>
+    <label class="field mt-3"><span>Barrio</span><input formControlName="neighborhood" /></label>
+    <label class="field mt-3">
+      <span>Cobrador</span>
+      <select formControlName="collectorUid">
+        <option value="">Selecciona</option>
+        @for (member of team(); track member.uid) {
+          <option [value]="member.uid">{{ member.displayName }}</option>
+        }
+      </select>
+    </label>
+    <label class="field mt-3"><span>Orden de ruta</span><input type="number" min="1" formControlName="routeOrder" /></label>
+    <label class="field mt-3"><span>Notas</span><textarea rows="3" formControlName="notes"></textarea></label>
+    <div class="mt-4 flex gap-2">
+      <button class="btn btn-primary flex-1" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar' }}</button>
+      <button class="btn btn-ghost" type="button" (click)="reset()">Limpiar</button>
+    </div>
+  </form>
+</section>

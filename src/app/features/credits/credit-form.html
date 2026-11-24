@@ -1,0 +1,46 @@
+<section class="mx-auto max-w-xl">
+  <p class="kicker">Originación</p>
+  <h2 class="title">Nuevo crédito</h2>
+  <p class="lede mt-1">La tasa es plana sobre el capital. Las cuotas se calculan en pesos enteros.</p>
+
+  @if (infoMessage()) {
+    <p class="note note-ok mt-4">{{ infoMessage() }}</p>
+  }
+  @if (errorMessage()) {
+    <p class="note note-error mt-4">{{ errorMessage() }}</p>
+  }
+
+  <form class="panel mt-4 space-y-3" [formGroup]="form" (ngSubmit)="save()">
+    <label class="field">
+      <span>Cliente</span>
+      <select formControlName="clientId">
+        <option value="">Selecciona</option>
+        @for (client of customerList(); track client.id) {
+          <option [value]="client.id">{{ client.fullName }}</option>
+        }
+      </select>
+    </label>
+    <label class="field"><span>Capital (COP)</span><input type="number" min="1" step="1" formControlName="principalCop" /></label>
+    <label class="field"><span>Tasa de interés (%)</span><input type="number" min="0" step="0.01" formControlName="interestRatePercent" /></label>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <label class="field">
+        <span>Frecuencia</span>
+        <select formControlName="frequency">
+          <option value="diario">Diario</option>
+          <option value="semanal">Semanal</option>
+          <option value="quincenal">Quincenal</option>
+          <option value="mensual">Mensual</option>
+        </select>
+      </label>
+      <label class="field"><span>Número de cuotas</span><input type="number" min="1" max="366" formControlName="installmentsCount" /></label>
+    </div>
+    <label class="field"><span>Primera cuota</span><input type="date" formControlName="startDate" /></label>
+    <p class="note note-info">{{ preview() }}</p>
+    <label class="field"><span>Documentos (imágenes)</span><input type="file" accept="image/*" multiple (change)="onDocuments($any($event.target).files)" /></label>
+    <label class="field"><span>Video de aceptación</span><input type="file" accept="video/*" (change)="onVideo($any($event.target).files)" /></label>
+    @if (saving() && progress() > 0) {
+      <p class="muted">Subiendo evidencia: {{ progress() }}%</p>
+    }
+    <button class="btn btn-primary w-full" type="submit" [disabled]="saving()">{{ saving() ? 'Creando crédito…' : 'Crear crédito' }}</button>
+  </form>
+</section>

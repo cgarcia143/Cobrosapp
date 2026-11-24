@@ -1,0 +1,40 @@
+<div class="mx-auto flex w-full max-w-6xl flex-1 flex-col md:flex-row">
+  <header class="shell-header sticky top-0 z-10 border-b px-4 py-3 md:hidden">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <p class="kicker">Cobranzas</p>
+        <h1 class="text-lg font-semibold">{{ tenantContext.tenant()?.name || 'Plataforma' }}</h1>
+      </div>
+      <button type="button" class="link-muted" (click)="signOut()">Salir</button>
+    </div>
+  </header>
+
+  <nav class="dock fixed inset-x-0 bottom-11 z-20 flex gap-2 overflow-x-auto border-t p-2 md:static md:bottom-auto md:w-64 md:flex-col md:justify-between md:border-r md:border-t-0 md:p-4">
+    <div class="flex gap-2 md:flex-col">
+      <div class="mb-6 hidden md:block">
+        <p class="kicker">Cobranzas</p>
+        <p class="mt-2 text-lg font-semibold">{{ tenantContext.tenant()?.name || 'Plataforma' }}</p>
+      </div>
+      @for (link of links(); track link.path) {
+        <a class="nav-link md:rounded-xl" [routerLink]="link.path" routerLinkActive="active">{{ link.label }}</a>
+      }
+    </div>
+    <button type="button" class="link-muted mt-6 hidden text-left md:block" (click)="signOut()">Cerrar sesión</button>
+  </nav>
+
+  <main class="flex-1 px-4 pb-32 pt-4 md:px-8 md:pb-8 md:pt-6">
+    @if (suspended()) {
+      <p class="note note-warn mb-4">
+        La suscripción está suspendida. Puedes consultar la ruta, pero los cobros y los créditos nuevos quedan bloqueados
+        hasta que la sede quede al día.
+        @if (tenantContext.tenant(); as tenant) {
+          Venció el {{ formatDate(tenant.subscription.nextDue) }}.
+        }
+      </p>
+    }
+    @if (!auth.session()?.role) {
+      <p class="note note-info mb-4">Tu usuario todavía no tiene sede ni rol. Un administrador debe asignarte antes de operar.</p>
+    }
+    <router-outlet />
+  </main>
+</div>

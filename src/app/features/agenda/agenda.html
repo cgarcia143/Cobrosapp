@@ -1,0 +1,106 @@
+<section class="space-y-4">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <p class="kicker">Operación</p>
+      <h2 class="title">Ruta de hoy</h2>
+      <p class="lede">Clientes por cobrar, ordenados por mora, orden de ruta y nombre.</p>
+    </div>
+    @if (!isCollector()) {
+      <label class="field min-w-52">
+        <span>Cobrador</span>
+        <select [value]="collectorFilter()" (change)="onCollectorChange($any($event.target).value)">
+          <option value="">Toda la sede</option>
+          @for (member of team(); track member.uid) {
+            <option [value]="member.uid">{{ member.displayName }}</option>
+          }
+        </select>
+      </label>
+    }
+  </div>
+
+  @if (fromCache()) {
+    <p class="note note-info">Sin conexión con Firestore. Estás viendo la ruta guardada en este dispositivo.</p>
+  }
+  @if (hasPendingWrites()) {
+    <p class="note note-ok">Hay pagos pendientes de sincronizar. Se enviarán solos al volver la red.</p>
+  }
+  @if (infoMessage()) {
+    <p class="note note-ok">{{ infoMessage() }}</p>
+  }
+  @if (errorMessage()) {
+    <p class="note note-error">{{ errorMessage() }}</p>
+  }
+
+  @if (lastReceipt(); as receipt) {
+    <div class="card">
+      <p class="font-semibold">Último recibo {{ receipt.receiptNumber }}</p>
+      <p class="muted">{{ receipt.clientName }} · {{ formatCop(receipt.amountCop) }}</p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button type="button" class="btn btn-ghost" (click)="printBluetooth()">Imprimir por Bluetooth</button>
+        <button type="button" class="btn btn-ghost" (click)="printBrowser()">Imprimir por el navegador</button>
+      </div>
+    </div>
+  }
+
+  @if (loading()) {
+    <p class="muted">Cargando ruta…</p>
+  } @else if (items().length === 0) {
+    <p class="empty">No hay clientes para cobrar hoy.</p>
+  } @else {
+    <div class="grid gap-3 lg:grid-cols-2">
+      @for (item of items(); track item.creditId) {
+        <article class="card">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-semibold">{{ item.clientName }}</h3>
+              <p class="muted">{{ item.clientAddress || 'Sin dirección' }}</p>
+              <p class="muted">{{ item.clientPhone || 'Sin teléfono' }}</p>
+            </div>
+            <span [class]="statusClass(item.status)">{{ statusLabel(item.status) }}</span>
+          </div>
+          <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt class="muted">Cuota</dt>
+              <dd class="font-medium">{{ item.installmentNumber || '—' }}/{{ item.installmentsCount }} · {{ formatCop(item.amountDueCop) }}</dd>
+            </div>
+            <div>
+              <dt class="muted">Vence</dt>
+              <dd class="font-medium">{{ item.dueDate ? formatDate(item.dueDate) : 'Pagado hoy' }}</dd>
+            </div>
+            <div>
+              <dt class="muted">Saldo</dt>
+              <dd class="font-medium">{{ formatCop(item.balanceCop) }}</dd>
+            </div>
+            <div>
+              <dt class="muted">Frecuencia</dt>
+              <dd class="font-medium capitalize">{{ item.frequency }}</dd>
+            </div>
+          </dl>
+
+          @if (item.status !== 'pagado') {
+            <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+              <label class="field">
+                <span>Valor en COP</span>
+                <input inputmode="numeric" type="number" min="1" step="1" [value]="amountOf(item)" (input)="setAmount(item.creditId, $any($event.target).value)" />
+              </label>
+              <label class="field">
+                <span>Medio</span>
+                <select [value]="methodOf(item)" (change)="setMethod(item.creditId, $any($event.target).value)">
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                </select>
+              </label>
+            </div>
+            <label class="field mt-3">
+              <span>Evidencia del cobro</span>
+              <input type="file" accept="image/*" (change)="setPhoto(item.creditId, $any($event.target).files)" />
+            </label>
+            <button type="button" class="btn btn-primary mt-3 w-full" [disabled]="savingId() === item.creditId || suspended()" (click)="collect(item)">
+              {{ savingId() === item.creditId ? 'Guardando…' : 'Registrar pago' }}
+            </button>
+          }
+        </article>
+      }
+    </div>
+  }
+</section>

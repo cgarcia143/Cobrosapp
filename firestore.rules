@@ -1,0 +1,319 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isPlatformOwner() {
+      return signedIn() && request.auth.token.email == 'arkatech@gmail.com';
+    }
+
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function myRole() {
+      return profile().role;
+    }
+
+    function myTenant() {
+      return profile().tenantId;
+    }
+
+    function isSuper() {
+      return signedIn() && myRole() == 'super_admin';
+    }
+
+    function isManager() {
+      return signedIn() && (myRole() == 'oficina_admin' || myRole() == 'independiente');
+    }
+
+    function isCollector() {
+      return signedIn() && myRole() == 'cobrador';
+    }
+
+    function sameTenant(tenantId) {
+      return signedIn() && myTenant() == tenantId;
+    }
+
+    function subscriptionOk(tenantId) {
+      let tenant = get(/databases/$(database)/documents/tenants/$(tenantId)).data;
+      return isSuper() || (
+        tenant.status != 'suspendido'
+        && tenant.subscription.nextDue > request.time
+      );
+    }
+
+    function tenantProfileEdit() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['name', 'phone', 'city', 'capitalCop', 'updatedAt']);
+    }
+
+    function superTenantEdit() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['status', 'subscription', 'name', 'phone', 'city', 'capitalCop', 'ownerUid', 'updatedAt']);
+    }
+
+    function creditProgressEdit() {
+      return request.resource.data.collectorUid == resource.data.collectorUid
+        && request.resource.data.clientId == resource.data.clientId
+        && request.resource.data.principalCop == resource.data.principalCop
+        && request.resource.data.interestCop == resource.data.interestCop
+        && request.resource.data.totalToCollectCop == resource.data.totalToCollectCop
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'paidCop',
+          'balanceCop',
+          'status',
+          'nextDueDate',
+          'nextInstallmentId',
+          'nextInstallmentNumber',
+          'nextInstallmentAmountCop',
+          'lastPaymentDate',
+          'updatedAt'
+        ]);
+    }
+
+    function installmentProgressEdit() {
+      return request.resource.data.collectorUid == resource.data.collectorUid
+        && request.resource.data.amountCop == resource.data.amountCop
+        && request.resource.data.number == resource.data.number
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'paidCop',
+          'status',
+          'paidAt',
+          'paymentIds',
+          'updatedAt'
+        ]);
+    }
+
+    function validPayment() {
+      return request.resource.data.creditId is string
+        && request.resource.data.clientId is string
+        && request.resource.data.collectorUid is string
+        && request.resource.data.amountCop is int
+        && request.resource.data.amountCop > 0
+        && request.resource.data.interestCop is int
+        && request.resource.data.principalCop is int
+        && request.resource.data.method in ['efectivo', 'transferencia']
+        && request.resource.data.paidAt is timestamp;
+    }
+
+    function paymentMatchesCredit(tenantId) {
+      let credit = get(/databases/$(database)/documents/tenants/$(tenantId)/credits/$(request.resource.data.creditId)).data;
+      return credit.collectorUid == request.resource.data.collectorUid
+        && credit.clientId == request.resource.data.clientId
+        && request.resource.data.amountCop <= credit.balanceCop;
+    }
+
+    function staffProfileEdit() {
+      return request.resource.data.email == resource.data.email
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['role', 'tenantId', 'active', 'displayName', 'phone', 'updatedAt']);
+    }
+
+    function memberMatchesAccount(tenantId, memberId) {
+      let user = get(/databases/$(database)/documents/users/$(memberId)).data;
+      return user.email == request.resource.data.email
+        && (user.tenantId == null || user.tenantId == tenantId)
+        && request.resource.data.displayName is string
+        && request.resource.data.phone is string
+        && request.resource.data.active == true;
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow get: if isSuper();
+      allow list: if isSuper();
+      allow get: if myRole() == 'oficina_admin'
+        && (resource.data.tenantId == null || resource.data.tenantId == myTenant() || resource.data.role == null);
+
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.displayName is string
+        && request.resource.data.tenantId == null
+        && request.resource.data.active == true
+        && request.resource.data.keys().hasOnly(['email', 'displayName', 'role', 'tenantId', 'active', 'updatedAt'])
+        && (
+          request.resource.data.role == null
+          || (isPlatformOwner() && request.resource.data.role == 'super_admin')
+        );
+
+      allow create: if isSuper()
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 3
+        && request.resource.data.displayName is string
+        && request.resource.data.phone is string
+        && request.resource.data.active is bool
+        && request.resource.data.keys().hasOnly(['email', 'displayName', 'phone', 'role', 'tenantId', 'active', 'updatedAt'])
+        && (
+          (request.resource.data.role == null && request.resource.data.tenantId == null)
+          || (request.resource.data.role == 'super_admin' && request.resource.data.tenantId == null)
+          || (
+            request.resource.data.role in ['oficina_admin', 'independiente', 'cobrador']
+            && request.resource.data.tenantId is string
+          )
+        );
+
+      allow update: if isPlatformOwner()
+        && request.auth.uid == uid
+        && resource.data.role == null
+        && request.resource.data.role == 'super_admin'
+        && request.resource.data.tenantId == null
+        && staffProfileEdit();
+
+      allow update: if isSuper() && staffProfileEdit()
+        && (
+          (request.resource.data.role == null && request.resource.data.tenantId == null)
+          || (request.resource.data.role == 'super_admin' && request.resource.data.tenantId == null)
+          || (
+            request.resource.data.role in ['oficina_admin', 'independiente', 'cobrador']
+            && request.resource.data.tenantId is string
+          )
+        );
+
+      allow update: if myRole() == 'oficina_admin'
+        && (resource.data.role == null || resource.data.role == 'cobrador')
+        && (resource.data.tenantId == null || resource.data.tenantId == myTenant())
+        && request.resource.data.role == 'cobrador'
+        && request.resource.data.tenantId == myTenant()
+        && staffProfileEdit();
+
+      allow delete: if false;
+    }
+
+    match /accounts/{email} {
+      allow get: if signedIn() && request.auth.token.email == email;
+      allow get: if isSuper() || myRole() == 'oficina_admin';
+      allow create: if signedIn()
+        && email == request.auth.token.email
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == email
+        && request.resource.data.keys().hasOnly(['uid', 'email']);
+      allow create: if isSuper()
+        && request.resource.data.uid is string
+        && request.resource.data.email == email
+        && request.resource.data.keys().hasOnly(['uid', 'email']);
+      allow update, delete: if false;
+    }
+
+    match /tenants/{tenantId} {
+      allow get: if isSuper() || (sameTenant(tenantId) && (isManager() || isCollector()));
+      allow list: if isSuper();
+      allow create: if isSuper()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.type in ['oficina', 'independiente']
+        && request.resource.data.status == 'trial'
+        && request.resource.data.ownerUid is string
+        && request.resource.data.capitalCop is int
+        && request.resource.data.capitalCop >= 0
+        && request.resource.data.city is string
+        && request.resource.data.phone is string
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.subscription.plan == request.resource.data.type
+        && request.resource.data.subscription.cycle in ['mensual', 'anual']
+        && request.resource.data.subscription.amountCop is int
+        && request.resource.data.subscription.amountCop >= 0
+        && request.resource.data.subscription.nextDue is timestamp
+        && request.resource.data.subscription.lastPaymentAt == null;
+      allow delete: if false;
+      allow update: if isSuper() && superTenantEdit();
+      allow update: if sameTenant(tenantId) && isManager() && subscriptionOk(tenantId) && tenantProfileEdit();
+
+      match /members/{memberId} {
+        allow get: if isSuper() || (sameTenant(tenantId) && (isManager() || request.auth.uid == memberId));
+        allow list: if isSuper() || (sameTenant(tenantId) && isManager());
+        allow create: if isSuper()
+          && get(/databases/$(database)/documents/users/$(memberId)).data.email == request.resource.data.email
+          && request.resource.data.role in ['oficina_admin', 'independiente', 'cobrador']
+          && request.resource.data.displayName is string
+          && request.resource.data.phone is string
+          && request.resource.data.active is bool;
+        allow update: if isSuper()
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role in ['oficina_admin', 'independiente', 'cobrador'];
+        allow create: if myRole() == 'oficina_admin'
+          && sameTenant(tenantId)
+          && memberMatchesAccount(tenantId, memberId)
+          && request.resource.data.role == 'cobrador'
+          && (get(/databases/$(database)/documents/users/$(memberId)).data.role == null
+            || get(/databases/$(database)/documents/users/$(memberId)).data.role == 'cobrador');
+        allow update: if myRole() == 'oficina_admin'
+          && sameTenant(tenantId)
+          && resource.data.role == 'cobrador'
+          && request.resource.data.role == 'cobrador'
+          && request.resource.data.email == resource.data.email;
+        allow delete: if false;
+      }
+
+      match /billingPayments/{paymentId} {
+        allow get, list: if isSuper();
+        allow create: if isSuper()
+          && request.resource.data.amountCop is int
+          && request.resource.data.amountCop > 0
+          && request.resource.data.cycle in ['mensual', 'anual']
+          && request.resource.data.nextDue is timestamp;
+        allow update, delete: if false;
+      }
+
+      match /clients/{clientId} {
+        allow get, list: if isSuper() || (sameTenant(tenantId) && isManager());
+        allow create, update, delete: if sameTenant(tenantId) && isManager() && subscriptionOk(tenantId);
+      }
+
+      match /credits/{creditId} {
+        allow get: if isSuper()
+          || (sameTenant(tenantId) && isManager())
+          || (sameTenant(tenantId) && isCollector() && resource.data.collectorUid == request.auth.uid);
+        allow list: if isSuper() || (sameTenant(tenantId) && isManager());
+        allow list: if sameTenant(tenantId) && isCollector() && resource.data.collectorUid == request.auth.uid;
+        allow create: if sameTenant(tenantId) && isManager() && subscriptionOk(tenantId);
+        allow update: if sameTenant(tenantId) && isManager() && subscriptionOk(tenantId);
+        allow update: if sameTenant(tenantId)
+          && isCollector()
+          && subscriptionOk(tenantId)
+          && resource.data.collectorUid == request.auth.uid
+          && creditProgressEdit();
+        allow delete: if sameTenant(tenantId) && isManager() && subscriptionOk(tenantId);
+
+        match /installments/{installmentId} {
+          allow get: if isSuper()
+            || (sameTenant(tenantId) && isManager())
+            || (sameTenant(tenantId) && isCollector() && resource.data.collectorUid == request.auth.uid);
+          allow list: if isSuper() || (sameTenant(tenantId) && isManager());
+          allow list: if sameTenant(tenantId) && isCollector() && resource.data.collectorUid == request.auth.uid;
+          allow create: if sameTenant(tenantId) && isManager() && subscriptionOk(tenantId);
+          allow update: if sameTenant(tenantId) && isManager() && subscriptionOk(tenantId);
+          allow update: if sameTenant(tenantId)
+            && isCollector()
+            && subscriptionOk(tenantId)
+            && resource.data.collectorUid == request.auth.uid
+            && installmentProgressEdit();
+          allow delete: if false;
+        }
+      }
+
+      match /payments/{paymentId} {
+        allow get: if isSuper()
+          || (sameTenant(tenantId) && isManager())
+          || (sameTenant(tenantId) && isCollector() && resource.data.collectorUid == request.auth.uid);
+        allow list: if isSuper() || (sameTenant(tenantId) && isManager());
+        allow create: if sameTenant(tenantId)
+          && isCollector()
+          && subscriptionOk(tenantId)
+          && request.resource.data.collectorUid == request.auth.uid
+          && validPayment()
+          && paymentMatchesCredit(tenantId);
+        allow create: if sameTenant(tenantId)
+          && isManager()
+          && subscriptionOk(tenantId)
+          && validPayment()
+          && paymentMatchesCredit(tenantId);
+        allow update, delete: if false;
+      }
+    }
+  }
+}

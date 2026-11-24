@@ -1,0 +1,55 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function sameTenant(tenantId) {
+      return profile().tenantId == tenantId;
+    }
+
+    function tenantOpen(tenantId) {
+      let tenant = firestore.get(/databases/(default)/documents/tenants/$(tenantId)).data;
+      return tenant.status != 'suspendido' && tenant.subscription.nextDue > request.time;
+    }
+
+    function isSuper() {
+      return profile().role == 'super_admin';
+    }
+
+    function isManager() {
+      return profile().role == 'oficina_admin' || profile().role == 'independiente';
+    }
+
+    function isStaff() {
+      return isManager() || profile().role == 'cobrador';
+    }
+
+    match /tenants/{tenantId}/credits/{creditId}/{kind}/{fileName} {
+      allow read: if signedIn() && (isSuper() || (sameTenant(tenantId) && isStaff()));
+      allow create: if signedIn()
+        && sameTenant(tenantId)
+        && isManager()
+        && tenantOpen(tenantId)
+        && request.resource.size < 80 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|video/.*');
+      allow delete: if signedIn() && sameTenant(tenantId) && isManager();
+    }
+
+    match /tenants/{tenantId}/payments/{paymentId}/{fileName} {
+      allow read: if signedIn() && (isSuper() || (sameTenant(tenantId) && isStaff()));
+      allow create: if signedIn()
+        && sameTenant(tenantId)
+        && isStaff()
+        && tenantOpen(tenantId)
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if signedIn() && sameTenant(tenantId) && isManager();
+    }
+  }
+}

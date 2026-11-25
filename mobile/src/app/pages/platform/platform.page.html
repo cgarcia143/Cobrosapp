@@ -1,0 +1,89 @@
+<ion-content class="ion-padding">
+  <p class="kicker">Plataforma</p>
+  <h2>Sedes y usuarios</h2>
+  <p class="lede">Todo queda en la base local del teléfono.</p>
+  @if (infoMessage()) {
+    <ion-note color="success" class="block-note">{{ infoMessage() }}</ion-note>
+  }
+  @if (errorMessage()) {
+    <ion-note color="danger" class="block-note">{{ errorMessage() }}</ion-note>
+  }
+  <div class="button-row">
+    <ion-button [fill]="section() === 'usuarios' ? 'solid' : 'outline'" (click)="show('usuarios')">Usuarios</ion-button>
+    <ion-button [fill]="section() === 'sedes' ? 'solid' : 'outline'" (click)="show('sedes')">Sedes</ion-button>
+  </div>
+
+  @if (section() === 'usuarios') {
+    @for (user of users(); track user.uid) {
+      <ion-item>
+        <ion-label>
+          <h3>{{ user.displayName }}</h3>
+          <p>{{ user.email }} · {{ user.role || 'sin rol' }}{{ user.active ? '' : ' · inactivo' }}</p>
+        </ion-label>
+      </ion-item>
+    }
+    <form [formGroup]="userForm" (ngSubmit)="saveUser()">
+      <h3>Nuevo usuario</h3>
+      <ion-item><ion-input label="Nombre" labelPlacement="stacked" formControlName="displayName"></ion-input></ion-item>
+      <ion-item><ion-input label="Correo" labelPlacement="stacked" type="email" formControlName="email"></ion-input></ion-item>
+      <ion-item><ion-input label="Teléfono" labelPlacement="stacked" formControlName="phone"></ion-input></ion-item>
+      <ion-item><ion-input label="Contraseña" labelPlacement="stacked" type="text" formControlName="password"></ion-input></ion-item>
+      <ion-item>
+        <ion-select label="Rol" labelPlacement="stacked" formControlName="role">
+          <ion-select-option value="none">Sin rol</ion-select-option>
+          <ion-select-option value="super_admin">Super admin</ion-select-option>
+          <ion-select-option value="oficina_admin">Oficina</ion-select-option>
+          <ion-select-option value="independiente">Independiente</ion-select-option>
+          <ion-select-option value="cobrador">Cobrador</ion-select-option>
+        </ion-select>
+      </ion-item>
+      <ion-item>
+        <ion-select label="Sede" labelPlacement="stacked" formControlName="tenantId">
+          <ion-select-option value="">Sin sede</ion-select-option>
+          @for (tenant of tenants(); track tenant.id) {
+            <ion-select-option [value]="tenant.id">{{ tenant.name }}</ion-select-option>
+          }
+        </ion-select>
+      </ion-item>
+      <ion-button expand="block" type="submit" [disabled]="saving()">Guardar usuario</ion-button>
+    </form>
+  } @else {
+    @for (tenant of tenants(); track tenant.id) {
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>{{ tenant.name }}</ion-card-title>
+          <ion-card-subtitle>{{ tenant.type }} · {{ tenant.status }} · {{ tenant.city }}</ion-card-subtitle>
+        </ion-card-header>
+        <ion-card-content>
+          <p>Capital {{ formatCop(tenant.capitalCop) }}</p>
+          <p>Suscripción hasta {{ formatDate(tenant.subscription.nextDue) }}</p>
+          <ion-button fill="outline" (click)="renew(tenant)">Renovar</ion-button>
+          <ion-button fill="outline" color="warning" (click)="toggle(tenant)">
+            {{ tenant.status === 'suspendido' ? 'Habilitar' : 'Suspender' }}
+          </ion-button>
+        </ion-card-content>
+      </ion-card>
+    }
+    <form [formGroup]="tenantForm" (ngSubmit)="saveTenant()">
+      <h3>Nueva sede</h3>
+      <ion-item><ion-input label="Nombre" labelPlacement="stacked" formControlName="name"></ion-input></ion-item>
+      <ion-item>
+        <ion-select label="Tipo" labelPlacement="stacked" formControlName="type">
+          <ion-select-option value="oficina">Oficina</ion-select-option>
+          <ion-select-option value="independiente">Independiente</ion-select-option>
+        </ion-select>
+      </ion-item>
+      <ion-item><ion-input label="Ciudad" labelPlacement="stacked" formControlName="city"></ion-input></ion-item>
+      <ion-item><ion-input label="Teléfono" labelPlacement="stacked" formControlName="phone"></ion-input></ion-item>
+      <ion-item><ion-input label="Capital" labelPlacement="stacked" type="number" formControlName="capitalCop"></ion-input></ion-item>
+      <ion-item>
+        <ion-select label="Ciclo" labelPlacement="stacked" formControlName="cycle">
+          <ion-select-option value="mensual">Mensual</ion-select-option>
+          <ion-select-option value="anual">Anual</ion-select-option>
+        </ion-select>
+      </ion-item>
+      <ion-item><ion-input label="Valor suscripción" labelPlacement="stacked" type="number" formControlName="amountCop"></ion-input></ion-item>
+      <ion-button expand="block" type="submit" [disabled]="saving()">Guardar sede</ion-button>
+    </form>
+  }
+</ion-content>

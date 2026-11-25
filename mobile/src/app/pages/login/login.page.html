@@ -1,0 +1,36 @@
+<ion-content class="ion-padding">
+  <div class="login-wrap">
+    <p class="kicker">Cobranzas</p>
+    <h1>Ingresar</h1>
+    <p class="lede">Los clientes, créditos y cobros quedan guardados en este teléfono. No usan internet.</p>
+
+    @if (errorMessage()) {
+      <ion-note color="danger" class="block-note">{{ errorMessage() }}</ion-note>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <ion-list lines="none">
+        <ion-item>
+          <ion-input label="Correo" labelPlacement="stacked" type="email" formControlName="email" autocomplete="username"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input label="Contraseña" labelPlacement="stacked" type="password" formControlName="password" autocomplete="current-password"></ion-input>
+        </ion-item>
+      </ion-list>
+      <ion-button expand="block" type="submit" [disabled]="saving()" class="ion-margin-top">
+        {{ saving() ? 'Ingresando…' : 'Entrar' }}
+      </ion-button>
+    </form>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Cuentas de este teléfono</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>Oficina: oficina&#64;local.app / Oficina123</p>
+        <p>Cobrador: cobrador&#64;local.app / Ruta123</p>
+        <p>Plataforma: arkatech&#64;gmail.com / Admin1234</p>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>

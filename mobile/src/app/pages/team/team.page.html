@@ -1,0 +1,27 @@
+<ion-content class="ion-padding">
+  <p class="kicker">Oficina</p>
+  <h2>Equipo</h2>
+  <p class="lede">Los cobradores entran con el correo y la contraseña que definas aquí.</p>
+  @if (infoMessage()) {
+    <ion-note color="success" class="block-note">{{ infoMessage() }}</ion-note>
+  }
+  @if (errorMessage()) {
+    <ion-note color="danger" class="block-note">{{ errorMessage() }}</ion-note>
+  }
+  @for (member of team(); track member.uid) {
+    <ion-item>
+      <ion-label>
+        <h3>{{ member.displayName }}</h3>
+        <p>{{ member.email }} · {{ member.role }}{{ member.active ? '' : ' · inactivo' }}</p>
+      </ion-label>
+    </ion-item>
+  }
+  <form [formGroup]="form" (ngSubmit)="invite()">
+    <h3>Nuevo cobrador</h3>
+    <ion-item><ion-input label="Nombre" labelPlacement="stacked" formControlName="displayName"></ion-input></ion-item>
+    <ion-item><ion-input label="Correo" labelPlacement="stacked" type="email" formControlName="email"></ion-input></ion-item>
+    <ion-item><ion-input label="Teléfono" labelPlacement="stacked" formControlName="phone"></ion-input></ion-item>
+    <ion-item><ion-input label="Contraseña" labelPlacement="stacked" type="text" formControlName="password"></ion-input></ion-item>
+    <ion-button expand="block" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Crear cobrador' }}</ion-button>
+  </form>
+</ion-content>

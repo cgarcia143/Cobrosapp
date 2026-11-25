@@ -1,0 +1,41 @@
+<ion-content class="ion-padding">
+  <p class="kicker">Cartera</p>
+  <h2>Nuevo crédito</h2>
+  <p class="lede">La tasa es plana sobre el capital y las cuotas se redondean al peso.</p>
+  @if (infoMessage()) {
+    <ion-note color="success" class="block-note">{{ infoMessage() }}</ion-note>
+  }
+  @if (errorMessage()) {
+    <ion-note color="danger" class="block-note">{{ errorMessage() }}</ion-note>
+  }
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <ion-item>
+      <ion-select label="Cliente" labelPlacement="stacked" formControlName="clientId">
+        <ion-select-option value="">Selecciona</ion-select-option>
+        @for (client of clients(); track client.id) {
+          <ion-select-option [value]="client.id">{{ client.fullName }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+    <ion-item><ion-input label="Capital COP" labelPlacement="stacked" type="number" formControlName="principalCop"></ion-input></ion-item>
+    <ion-item><ion-input label="Tasa %" labelPlacement="stacked" type="number" formControlName="interestRatePercent"></ion-input></ion-item>
+    <ion-item>
+      <ion-select label="Frecuencia" labelPlacement="stacked" formControlName="frequency">
+        <ion-select-option value="diario">Diario</ion-select-option>
+        <ion-select-option value="semanal">Semanal</ion-select-option>
+        <ion-select-option value="quincenal">Quincenal</ion-select-option>
+        <ion-select-option value="mensual">Mensual</ion-select-option>
+      </ion-select>
+    </ion-item>
+    <ion-item><ion-input label="Cuotas" labelPlacement="stacked" type="number" formControlName="installmentsCount"></ion-input></ion-item>
+    <ion-item><ion-input label="Inicio" labelPlacement="stacked" type="date" formControlName="startDate"></ion-input></ion-item>
+    <p class="lede">Documentos</p>
+    <input type="file" accept="image/*" multiple (change)="onDocuments($any($event.target).files)" />
+    <p class="lede">Video de aceptación</p>
+    <input type="file" accept="video/*" (change)="onVideo($any($event.target).files)" />
+    <p class="lede">{{ preview() }}</p>
+    <ion-button expand="block" type="submit" [disabled]="saving() || suspended()">
+      {{ saving() ? 'Guardando…' : 'Crear crédito' }}
+    </ion-button>
+  </form>
+</ion-content>

@@ -1,0 +1,50 @@
+<ion-content class="ion-padding">
+  <p class="kicker">Cartera</p>
+  <h2>Clientes</h2>
+  <p class="lede">Cada cliente queda asignado a un cobrador y a un orden de ruta.</p>
+  @if (infoMessage()) {
+    <ion-note color="success" class="block-note">{{ infoMessage() }}</ion-note>
+  }
+  @if (errorMessage()) {
+    <ion-note color="danger" class="block-note">{{ errorMessage() }}</ion-note>
+  }
+
+  @for (client of items(); track client.id) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>{{ client.fullName }}</ion-card-title>
+        <ion-card-subtitle>{{ client.documentNumber }} · orden {{ client.routeOrder }}</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <p>{{ client.address }} {{ client.neighborhood }}</p>
+        <ion-button fill="clear" (click)="edit(client)">Editar</ion-button>
+        <ion-button fill="clear" color="medium" (click)="deactivate(client)">Desactivar</ion-button>
+      </ion-card-content>
+    </ion-card>
+  } @empty {
+    <p class="empty">Todavía no hay clientes activos.</p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <h3>{{ editingId() ? 'Editar cliente' : 'Nuevo cliente' }}</h3>
+    <ion-item><ion-input label="Nombre" labelPlacement="stacked" formControlName="fullName"></ion-input></ion-item>
+    <ion-item><ion-input label="Documento" labelPlacement="stacked" formControlName="documentNumber"></ion-input></ion-item>
+    <ion-item><ion-input label="Teléfono" labelPlacement="stacked" formControlName="phone"></ion-input></ion-item>
+    <ion-item><ion-input label="Dirección" labelPlacement="stacked" formControlName="address"></ion-input></ion-item>
+    <ion-item><ion-input label="Barrio" labelPlacement="stacked" formControlName="neighborhood"></ion-input></ion-item>
+    <ion-item>
+      <ion-select label="Cobrador" labelPlacement="stacked" formControlName="collectorUid">
+        <ion-select-option value="">Selecciona</ion-select-option>
+        @for (member of team(); track member.uid) {
+          <ion-select-option [value]="member.uid">{{ member.displayName }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+    <ion-item><ion-input label="Orden de ruta" labelPlacement="stacked" type="number" formControlName="routeOrder"></ion-input></ion-item>
+    <ion-item><ion-textarea label="Notas" labelPlacement="stacked" rows="3" formControlName="notes"></ion-textarea></ion-item>
+    <div class="ion-margin-top button-row">
+      <ion-button type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar' }}</ion-button>
+      <ion-button fill="outline" type="button" (click)="reset()">Limpiar</ion-button>
+    </div>
+  </form>
+</ion-content>

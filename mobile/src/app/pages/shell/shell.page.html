@@ -1,0 +1,27 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>{{ tenant()?.name || 'Cobranzas' }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="signOut()">Salir</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+@if (suspended()) {
+  <ion-note color="warning" class="block-note ion-padding-horizontal">
+    La suscripción está suspendida. Puedes ver la ruta, pero los cobros y los créditos nuevos quedan bloqueados.
+    @if (tenant(); as current) {
+      Venció el {{ formatDate(current.subscription.nextDue) }}.
+    }
+  </ion-note>
+}
+
+<ion-tabs>
+  <ion-tab-bar slot="bottom">
+    @for (link of links(); track link.path) {
+      <ion-tab-button [tab]="link.tab" [href]="link.path">
+        <ion-label>{{ link.label }}</ion-label>
+      </ion-tab-button>
+    }
+  </ion-tab-bar>
+</ion-tabs>

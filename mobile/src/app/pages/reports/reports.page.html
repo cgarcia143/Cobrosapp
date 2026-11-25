@@ -1,0 +1,26 @@
+<ion-content class="ion-padding">
+  <p class="kicker">Sede</p>
+  <h2>Reportes del mes</h2>
+  @if (infoMessage()) {
+    <ion-note color="success" class="block-note">{{ infoMessage() }}</ion-note>
+  }
+  @if (errorMessage()) {
+    <ion-note color="danger" class="block-note">{{ errorMessage() }}</ion-note>
+  }
+  @if (report(); as current) {
+    <ion-list>
+      <ion-item><ion-label>Mes</ion-label><ion-note slot="end">{{ current.monthKey }}</ion-note></ion-item>
+      <ion-item><ion-label>Capital prestado</ion-label><ion-note slot="end">{{ formatCop(current.capitalPrestadoCop) }}</ion-note></ion-item>
+      <ion-item><ion-label>Ganancias</ion-label><ion-note slot="end">{{ formatCop(current.gananciasCop) }}</ion-note></ion-item>
+      <ion-item><ion-label>Cartera vencida</ion-label><ion-note slot="end">{{ formatCop(current.carteraVencidaCop) }}</ion-note></ion-item>
+      <ion-item><ion-label>Capital en la calle</ion-label><ion-note slot="end">{{ formatCop(current.capitalEnCalleCop) }}</ion-note></ion-item>
+      <ion-item><ion-label>Pagos del mes</ion-label><ion-note slot="end">{{ formatCop(current.pagosDelMesCop) }}</ion-note></ion-item>
+    </ion-list>
+  }
+  <form [formGroup]="capitalForm" (ngSubmit)="saveCapital()">
+    <ion-item>
+      <ion-input label="Capital de la sede" labelPlacement="stacked" type="number" formControlName="capitalCop"></ion-input>
+    </ion-item>
+    <ion-button expand="block" type="submit" [disabled]="saving()">Guardar capital</ion-button>
+  </form>
+</ion-content>

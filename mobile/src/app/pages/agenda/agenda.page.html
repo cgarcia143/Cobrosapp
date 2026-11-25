@@ -1,0 +1,74 @@
+<ion-content class="ion-padding">
+  <p class="kicker">Operación</p>
+  <h2>Ruta de hoy</h2>
+  <p class="lede">Clientes por cobrar, ordenados por mora, orden de ruta y nombre.</p>
+
+  @if (!isCollector()) {
+    <ion-item lines="none" class="ion-margin-top">
+      <ion-select label="Cobrador" labelPlacement="stacked" interface="popover" [value]="collectorFilter() || 'todos'" (ionChange)="onCollectorChange($any($event).detail.value)">
+        <ion-select-option value="todos">Toda la sede</ion-select-option>
+        @for (member of team(); track member.uid) {
+          <ion-select-option [value]="member.uid">{{ member.displayName }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+  }
+
+  @if (infoMessage()) {
+    <ion-note color="success" class="block-note">{{ infoMessage() }}</ion-note>
+  }
+  @if (errorMessage()) {
+    <ion-note color="danger" class="block-note">{{ errorMessage() }}</ion-note>
+  }
+
+  @if (lastReceipt(); as receipt) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Recibo {{ receipt.receiptNumber }}</ion-card-title>
+        <ion-card-subtitle>{{ receipt.clientName }} · {{ formatCop(receipt.amountCop) }}</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <p>{{ formatDateTime(receipt.paidAt) }} · saldo {{ formatCop(receipt.balanceCop) }}</p>
+        <ion-button fill="outline" (click)="printReceipt()">Imprimir recibo</ion-button>
+      </ion-card-content>
+    </ion-card>
+  }
+
+  @if (items().length === 0) {
+    <p class="empty">No hay clientes para cobrar hoy.</p>
+  } @else {
+    @for (item of items(); track item.creditId) {
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>{{ item.clientName }}</ion-card-title>
+          <ion-card-subtitle>
+            <ion-badge [color]="statusColor(item.status)">{{ statusLabel(item.status) }}</ion-badge>
+          </ion-card-subtitle>
+        </ion-card-header>
+        <ion-card-content>
+          <p>{{ item.clientAddress || 'Sin dirección' }}</p>
+          <p>{{ item.clientPhone || 'Sin teléfono' }}</p>
+          <p>Cuota {{ item.installmentNumber || '—' }}/{{ item.installmentsCount }} · {{ formatCop(item.amountDueCop) }}</p>
+          <p>Vence {{ item.dueDate ? formatDate(item.dueDate) : 'Pagado hoy' }} · saldo {{ formatCop(item.balanceCop) }}</p>
+          <p class="capitalize">{{ item.frequency }}</p>
+          @if (item.status !== 'pagado') {
+            <ion-item lines="none">
+              <ion-input label="Valor en COP" labelPlacement="stacked" type="number" inputmode="numeric" [value]="amountOf(item)" (ionInput)="setAmount(item.creditId, $any($event).detail.value)"></ion-input>
+            </ion-item>
+            <ion-item lines="none">
+              <ion-select label="Medio" labelPlacement="stacked" [value]="methodOf(item)" (ionChange)="setMethod(item.creditId, $any($event).detail.value)">
+                <ion-select-option value="efectivo">Efectivo</ion-select-option>
+                <ion-select-option value="transferencia">Transferencia</ion-select-option>
+              </ion-select>
+            </ion-item>
+            <p class="lede">Evidencia del cobro</p>
+            <input type="file" accept="image/*" (change)="setPhoto(item.creditId, $any($event.target).files)" />
+            <ion-button expand="block" [disabled]="savingId() === item.creditId || suspended()" (click)="collect(item)">
+              {{ savingId() === item.creditId ? 'Guardando…' : 'Registrar pago' }}
+            </ion-button>
+          }
+        </ion-card-content>
+      </ion-card>
+    }
+  }
+</ion-content>
